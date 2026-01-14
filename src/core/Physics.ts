@@ -30,6 +30,8 @@ export const CATEGORY_WORM = 0x0002;
 export interface PhysicsWorld {
   world: planck.World;
   step: (dt: number) => void;
+  setGravity: (magnitude: number) => void;
+  setIterations: (velocity: number, position: number) => void;
 }
 
 export function createPhysicsWorld(): PhysicsWorld {
@@ -37,11 +39,20 @@ export function createPhysicsWorld(): PhysicsWorld {
     gravity: planck.Vec2(0, 10), // Positive Y is down in our coordinate system
   });
 
+  let velocityIterations = 8;
+  let positionIterations = 3;
+
   return {
     world,
     step: (dt: number) => {
-      // Fixed timestep for stability
-      world.step(dt, 8, 3);
+      world.step(dt, velocityIterations, positionIterations);
+    },
+    setGravity: (magnitude: number) => {
+      world.setGravity(planck.Vec2(0, magnitude));
+    },
+    setIterations: (velocity: number, position: number) => {
+      velocityIterations = velocity;
+      positionIterations = position;
     },
   };
 }

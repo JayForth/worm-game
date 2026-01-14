@@ -53,4 +53,12 @@ export class Camera {
     this.levelWidth = levelWidth;
     this.levelHeight = levelHeight;
   }
+
+  setSmoothing(value: number): void {
+    this.smoothing = value;
+  }
+
+  getSmoothing(): number {
+    return this.smoothing;
+  }
 }

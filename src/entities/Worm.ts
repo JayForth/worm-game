@@ -43,6 +43,13 @@ export class Worm {
   private lastMousePos = { x: 0, y: 0 };
   private mouseVelocity = { x: 0, y: 0 };
 
+  // Configurable mouse joint parameters
+  private mouseJointFrequency = 5.0;
+  private mouseJointDamping = 0.7;
+
+  // Configurable hitbox multiplier
+  hitboxMultiplier = 3.0;
+
   // Checkpoint
   checkpoint: { x: number; y: number };
   private groundedTimer = 0;
@@ -127,8 +134,8 @@ export class Worm {
     return end === 'head' ? this.head : this.tail;
   }
 
-  getEndAtPosition(x: number, y: number, hitboxMultiplier = 3.0): WormEnd | null {
-    const hitRadius = this.config.segmentRadius * hitboxMultiplier;
+  getEndAtPosition(x: number, y: number, hitboxMultiplierOverride?: number): WormEnd | null {
+    const hitRadius = this.config.segmentRadius * (hitboxMultiplierOverride ?? this.hitboxMultiplier);
 
     const headPos = toPixelsVec(this.head.getPosition());
     const tailPos = toPixelsVec(this.tail.getPosition());
@@ -164,8 +171,8 @@ export class Worm {
         bodyB: grabbedBody,
         target: toPhysicsVec(mouseX, mouseY),
         maxForce: 1000 * grabbedBody.getMass(),
-        frequencyHz: 5.0,
-        dampingRatio: 0.7,
+        frequencyHz: this.mouseJointFrequency,
+        dampingRatio: this.mouseJointDamping,
       })
     ) as planck.MouseJoint;
 
@@ -352,6 +359,105 @@ export class Worm {
 
     // Recreate at checkpoint
     this.createBody(this.checkpoint.x, this.checkpoint.y);
+  }
+
+  // Debug: Get config
+  getConfig(): WormConfig {
+    return this.config;
+  }
+
+  // Debug: Get joints for rendering
+  getJoints(): planck.Joint[] {
+    return this.joints;
+  }
+
+  // Debug: Get segment velocities
+  getSegmentVelocities(): { x: number; y: number }[] {
+    return this.segments.map((seg) => toPixelsVec(seg.getLinearVelocity()));
+  }
+
+  // Debug: Update segment physics properties (live)
+  updateSegmentPhysics(
+    damping: { linear: number; angular: number },
+    fixture: { density: number; friction: number; restitution: number }
+  ): void {
+    for (const segment of this.segments) {
+      segment.setLinearDamping(damping.linear);
+      segment.setAngularDamping(damping.angular);
+
+      const f = segment.getFixtureList();
+      if (f) {
+        f.setDensity(fixture.density);
+        f.setFriction(fixture.friction);
+        f.setRestitution(fixture.restitution);
+        segment.resetMassData();
+      }
+    }
+  }
+
+  // Debug: Update joint properties (live)
+  updateJointProperties(frequencyHz: number, dampingRatio: number): void {
+    for (const joint of this.joints) {
+      const distJoint = joint as planck.DistanceJoint;
+      if (distJoint.setFrequency) {
+        distJoint.setFrequency(frequencyHz);
+      }
+      if (distJoint.setDampingRatio) {
+        distJoint.setDampingRatio(dampingRatio);
+      }
+    }
+  }
+
+  // Debug: Update grab/throw config
+  updateGrabConfig(maxStretch: number, throwMultiplier: number): void {
+    this.config.maxStretch = maxStretch;
+    this.config.throwMultiplier = throwMultiplier;
+  }
+
+  // Debug: Update mouse joint config
+  updateMouseJointConfig(frequencyHz: number, dampingRatio: number): void {
+    this.mouseJointFrequency = frequencyHz;
+    this.mouseJointDamping = dampingRatio;
+  }
+
+  // Debug: Update segment radius (live)
+  updateSegmentRadius(radius: number): void {
+    this.config.segmentRadius = radius;
+    // Note: Changing fixture shape requires recreation, which we do on rebuild
+  }
+
+  // Debug: Rebuild worm with new shape config
+  rebuild(newConfig: Partial<WormConfig>): void {
+    // Merge new config
+    this.config = { ...this.config, ...newConfig };
+
+    // Store checkpoint
+    const checkpoint = this.checkpoint;
+
+    // Release any grab first
+    if (this.mouseJoint) {
+      this.world.destroyJoint(this.mouseJoint);
+      this.mouseJoint = null;
+    }
+
+    // Reset grab state
+    this.grabbedEnd = null;
+    this.anchoredBody = null;
+    this.stretchRatio = 0;
+
+    // Destroy current segments and joints
+    for (const joint of this.joints) {
+      this.world.destroyJoint(joint);
+    }
+    for (const segment of this.segments) {
+      this.world.destroyBody(segment);
+    }
+
+    this.segments = [];
+    this.joints = [];
+
+    // Recreate at checkpoint
+    this.createBody(checkpoint.x, checkpoint.y);
   }
 
   destroy(): void {

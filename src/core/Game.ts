@@ -1,5 +1,5 @@
 import * as planck from 'planck';
-import { createPhysicsWorld } from './Physics';
+import { createPhysicsWorld, PhysicsWorld } from './Physics';
 import { Input } from './Input';
 import { Camera } from '../camera/Camera';
 import { Renderer } from '../rendering/Renderer';
@@ -7,9 +7,11 @@ import { Worm } from '../entities/Worm';
 import { Level } from '../level/Level';
 import { LevelData } from '../level/LevelData';
 import { Editor } from '../editor/Editor';
+import { DebugPanel, DebugRenderer, DebugConfig } from '../debug';
 
 export class Game {
   private canvas: HTMLCanvasElement;
+  private physics: PhysicsWorld;
   private world: planck.World;
   private input: Input;
   private camera: Camera;
@@ -17,6 +19,10 @@ export class Game {
   private worm: Worm;
   private level: Level;
   private editor: Editor | null = null;
+
+  // Debug
+  private debugPanel: DebugPanel;
+  private debugRenderer: DebugRenderer;
 
   private isWon = false;
   private hasInteracted = false;
@@ -32,8 +38,8 @@ export class Game {
     canvas.height = 720;
 
     // Physics
-    const physics = createPhysicsWorld();
-    this.world = physics.world;
+    this.physics = createPhysicsWorld();
+    this.world = this.physics.world;
 
     // Level
     this.level = new Level(this.world, levelData);
@@ -50,6 +56,16 @@ export class Game {
 
     // Renderer
     this.renderer = new Renderer(canvas, levelData);
+
+    // Debug
+    this.debugRenderer = new DebugRenderer();
+    this.debugPanel = new DebugPanel(
+      (config, changedPath) => this.applyDebugConfig(config, changedPath),
+      () => this.rebuildWorm()
+    );
+
+    // Apply initial debug config (from localStorage if saved)
+    this.applyDebugConfig(this.debugPanel.getConfig(), 'all');
 
     // UI
     this.setupUI();
@@ -110,6 +126,11 @@ export class Game {
     // Toggle editor with backtick
     if (this.input.isKeyJustPressed('`')) {
       this.toggleEditor();
+    }
+
+    // Toggle debug panel with D
+    if (this.input.isKeyJustPressed('d')) {
+      this.debugPanel.toggle();
     }
 
     // Respawn with R
@@ -177,6 +198,73 @@ export class Game {
     }
   }
 
+  private applyDebugConfig(config: DebugConfig, changedPath: string): void {
+    const isAll = changedPath === 'all';
+    const [section] = changedPath.split('.');
+
+    // Physics core
+    if (isAll || section === 'physicsCore') {
+      this.physics.setGravity(config.physicsCore.gravityMagnitude);
+      this.physics.setIterations(
+        config.physicsCore.velocityIterations,
+        config.physicsCore.positionIterations
+      );
+    }
+
+    // Worm physics (live update)
+    if (isAll || section === 'wormPhysics') {
+      this.worm.updateSegmentPhysics(
+        {
+          linear: config.wormPhysics.linearDamping,
+          angular: config.wormPhysics.angularDamping,
+        },
+        {
+          density: config.wormPhysics.segmentDensity,
+          friction: config.wormPhysics.segmentFriction,
+          restitution: config.wormPhysics.segmentRestitution,
+        }
+      );
+    }
+
+    // Joints (live update)
+    if (isAll || section === 'joints') {
+      this.worm.updateJointProperties(config.joints.frequencyHz, config.joints.dampingRatio);
+    }
+
+    // Grab/throw config
+    if (isAll || section === 'grabThrow') {
+      this.worm.updateGrabConfig(config.grabThrow.maxStretch, config.grabThrow.throwMultiplier);
+      this.worm.updateMouseJointConfig(
+        config.grabThrow.mouseDragFrequency,
+        config.grabThrow.mouseDragDamping
+      );
+      this.worm.hitboxMultiplier = config.grabThrow.hitboxMultiplier;
+    }
+
+    // Camera
+    if (isAll || section === 'camera') {
+      this.camera.setSmoothing(config.camera.smoothing);
+    }
+
+    // Worm shape - only update radius live, count/spacing require rebuild
+    if (isAll || section === 'wormShape') {
+      this.worm.updateSegmentRadius(config.wormShape.segmentRadius);
+    }
+  }
+
+  private rebuildWorm(): void {
+    const config = this.debugPanel.getConfig();
+    this.worm.rebuild({
+      segmentCount: config.wormShape.segmentCount,
+      segmentRadius: config.wormShape.segmentRadius,
+      segmentSpacing: config.wormShape.segmentSpacing,
+    });
+
+    // Re-apply all physics settings to new segments
+    this.applyDebugConfig(config, 'wormPhysics');
+    this.applyDebugConfig(config, 'joints');
+  }
+
   private update(): void {
     if (this.isWon) return;
     if (this.editorEnabled) return;
@@ -201,6 +289,16 @@ export class Game {
 
   private render(): void {
     this.renderer.render(this.worm, this.level.platforms, this.level.data.goal, this.camera);
+
+    // Render debug overlay if any visuals are enabled
+    const debugConfig = this.debugPanel.getConfig();
+    if (this.debugRenderer.hasActiveVisuals(debugConfig.visualDebug)) {
+      const ctx = this.renderer.getContext();
+      ctx.save();
+      this.camera.applyTransform(ctx);
+      this.debugRenderer.render(ctx, this.worm, debugConfig.visualDebug, debugConfig);
+      ctx.restore();
+    }
 
     // Render editor overlay if active
     if (this.editorEnabled && this.editor) {
