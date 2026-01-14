@@ -127,7 +127,7 @@ export class Worm {
     return end === 'head' ? this.head : this.tail;
   }
 
-  getEndAtPosition(x: number, y: number, hitboxMultiplier = 1.5): WormEnd | null {
+  getEndAtPosition(x: number, y: number, hitboxMultiplier = 3.0): WormEnd | null {
     const hitRadius = this.config.segmentRadius * hitboxMultiplier;
 
     const headPos = toPixelsVec(this.head.getPosition());
