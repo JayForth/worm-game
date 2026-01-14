@@ -1,0 +1,22 @@
+{
+  "name": "worm-game",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "vercel --prod",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "planck": "^1.0.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^2.1.8"
+  }
+}

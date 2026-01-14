@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worm Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+    }
+    canvas {
+      display: block;
+      border-radius: 4px;
+    }
+    .btn {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .btn.active {
+      background: rgba(255, 200, 0, 0.3);
+      border-color: rgba(255, 200, 0, 0.5);
+    }
+    #restart-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    #respawn-btn {
+      position: absolute;
+      top: 10px;
+      right: 90px;
+    }
+    #tutorial {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.8);
+      font-family: sans-serif;
+      font-size: 16px;
+      text-align: center;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    #win-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 30px 50px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+    }
+    #win-message h2 {
+      color: #4ade80;
+      font-family: sans-serif;
+      margin-bottom: 15px;
+    }
+    #win-message button {
+      padding: 10px 25px;
+      background: #4ade80;
+      border: none;
+      color: #1a1a2e;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #editor-ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: none;
+    }
+    #editor-ui .toolbar {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+    #editor-ui .btn {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    #controls-hint {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.5);
+      font-family: sans-serif;
+      font-size: 12px;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <button id="respawn-btn" class="btn">Respawn (R)</button>
+    <button id="restart-btn" class="btn">Restart</button>
+    <div id="tutorial">Click and drag a worm end to move</div>
+    <div id="controls-hint">Press ` to toggle editor | R to respawn</div>
+    <div id="win-message">
+      <h2>Level Complete!</h2>
+      <button id="play-again">Play Again</button>
+    </div>
+    <div id="editor-ui">
+      <div class="toolbar">
+        <button id="tool-select" class="btn active">Select</button>
+        <button id="tool-surface" class="btn">Surface</button>
+        <button id="tool-spawn" class="btn">Spawn</button>
+      </div>
+      <div class="toolbar">
+        <button id="tool-add" class="btn">+ Add</button>
+        <button id="tool-delete" class="btn">Delete</button>
+        <button id="tool-export" class="btn">Export</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
